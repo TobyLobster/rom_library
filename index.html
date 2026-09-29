@@ -301,6 +301,9 @@ tr.rom .bad-tag {
   margin-left: 6px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em;
   border: 1px solid var(--bad); border-radius: 4px; padding: 0 4px; color: var(--bad);
 }
+/* The *HELP line that a ROM was found by, under its name */
+tr.rom .help-match { margin-top: 1px; font-size: 11.5px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+tr.rom .help-match .k { font-size: 10.5px; color: var(--text-3); margin-right: 6px; }
 td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 td.checksums { padding-right: 2px; font-size: 11px; color: var(--text-2); line-height: 1.45; white-space: nowrap; overflow-wrap: normal; overflow: hidden; }
 td.checksums .k { color: var(--text-3); }
@@ -338,6 +341,7 @@ dl.details { display: grid; grid-template-columns: max-content 1fr; gap: 5px 16p
 dl.details dt { color: var(--text-2); }
 dl.details dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 dl.details dd.mono { font-size: 12.5px; }
+.beeb mark { background: #fde68a; color: #000; }
 .beeb {
   background: #000; color: #fff;
   font-family: 'Roboto Mono', monospace; font-size: 12.5px; line-height: 1.35;
@@ -383,7 +387,7 @@ h4 { margin: 16px 0 8px; font-size: 12px; font-weight: 700; letter-spacing: .06e
   <label class="search" for="search">
     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
     <input id="search" type="text" autocomplete="off" spellcheck="false"
-           placeholder="Search by name, publisher, author, version, year or checksum">
+           placeholder="Search by name, publisher, author, version, year, *HELP text or checksum">
     <button id="clear-search" class="icon-button" title="Clear search" hidden>
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
     </button>
@@ -425,6 +429,7 @@ h4 { margin: 16px 0 8px; font-size: 12px; font-weight: 700; letter-spacing: .06e
         A green tick <span style="color:var(--good);font-weight:700">✓</span> marks a 'known good' ROM image.
         <a href="https://www.stardot.org.uk/forums/viewtopic.php?t=29831">Additions and corrections</a> are welcomed.</p>
         <p><b>Searching:</b> type words, "phrases in quotes", -exclusions (e.g. <span class="mono">-hacked</span>), or a checksum.
+        Each ROM's *HELP text is searched too, so e.g. <span class="mono">format</span> also finds the ROMs with a FORMAT command.
         Press <kbd>/</kbd> to jump to the search box. To identify a ROM image file, drop it anywhere on the page, or use <i>Identify a ROM…</i>.</p>
         <p><b>Brief explainer:</b> The BBC Micro has four sockets for 'sideways ROMs'. Expansion boards increase this number.
         One contains BBC BASIC by default, and another often holds a filing system such as ADFS.</p>
@@ -562,6 +567,22 @@ const BY_CONTENT = new Map();       // content id -> [rom]  (for partial matches
 const override = new Map();         // prod_id -> true/false: expanded or collapsed by hand
 let identifySet = null;             // Set of md5s when showing an identify result
 
+// The lines of a ROM's *HELP output as shown in its pop-up (without the '>*HELP' command lines), for searching
+function help_lines(r) {
+    const lines = [];
+    for (const [k, v] of r.help || []) {
+        if (k === "@BOOT@" || v.includes("BBC Computer")) continue;
+        for (const line of v.split("\n")) {
+            const l = line.trimEnd();
+            if (l.trim() && !l.startsWith(">")) lines.push(l);
+        }
+    }
+    return lines;
+}
+
+// In *HELP text commands are listed without the '*', so '*format' is looked for as 'format'
+function help_term(t) { return t.length > 1 && t[0] === '*' ? t.slice(1) : t; }
+
 function rom_layout_of(rom) {
     // [content id, unit size, repeats, content size, pad byte] (see rom_layout() in tools/romlib/romfile.py)
     const size = parseInt(rom.data.size, 10);
@@ -599,6 +620,8 @@ function prepare_data() {
                             search: [md5, r.crc16, r.crc32, r.sha1, r.name, r.publishers, r.authors, r.version, r.year, r.notes || ""].join("\n").toLowerCase(),
                         };
                         rom.layout = rom_layout_of(rom);
+                        rom.helpLines = help_lines(r);
+                        rom.helpSearch = rom.helpLines.join("\n").toLowerCase();
                         product.roms.push(rom);
                         ROMS.set(md5, rom);
                         if (rom.layout.content >= 16) {
@@ -666,8 +689,11 @@ function build_table() {
                 row.hidden = true;
                 const name = row.insertCell();
                 name.className = 'name';
-                name.innerHTML = (rom.good ? '<span class="status" title="Known good">✓</span>' : '') + '<span class="rom-name"></span>';
+                name.innerHTML = (rom.good ? '<span class="status" title="Known good">✓</span>' : '') + '<span class="rom-name"></span>' +
+                                 '<div class="help-match" title="Found in this ROM\'s *HELP text" hidden><span class="k">*HELP</span><span class="mono"></span></div>';
                 rom.nameEl = name.querySelector('.rom-name');
+                rom.helpBox = name.querySelector('.help-match');
+                rom.helpEl = rom.helpBox.querySelector('.mono');
                 rom.nameEl.textContent = r.name;
                 row.insertCell().textContent = r.publishers;
                 row.insertCell().textContent = r.version;
@@ -730,16 +756,15 @@ function selected_categories() {
     return new Set([...document.querySelectorAll('.chip[aria-pressed="true"]')].map(c => c.dataset.category));
 }
 
-let highlighted = [];
-function highlight(el, text, terms) {
-    if (!terms.length) { el.textContent = text; return; }
+// Returns text as HTML with the search terms marked, or null if none of them are in it
+function marked_html(text, terms) {
     const lower = text.toLowerCase();
     const marks = [];
     for (const t of terms) {
         let i = lower.indexOf(t);
         while (i !== -1 && t.length) { marks.push([i, i + t.length]); i = lower.indexOf(t, i + t.length); }
     }
-    if (!marks.length) { el.textContent = text; return; }
+    if (!marks.length) return null;
     marks.sort((a, b) => a[0] - b[0]);
     let html = '', pos = 0;
     for (const [s, e] of marks) {
@@ -748,8 +773,45 @@ function highlight(el, text, terms) {
         html += escape_html(text.slice(pos, start)) + '<mark>' + escape_html(text.slice(start, e)) + '</mark>';
         pos = e;
     }
-    el.innerHTML = html + escape_html(text.slice(pos));
+    return html + escape_html(text.slice(pos));
+}
+
+let highlighted = [];
+function highlight(el, text, terms) {
+    const html = terms.length ? marked_html(text, terms) : null;
+    if (html === null) { el.textContent = text; return; }
+    el.innerHTML = html;
     highlighted.push([el, text]);
+}
+
+// Shows the *HELP line that a ROM was found by, if some of the search terms are only in its *HELP text
+let helpShown = [];
+function show_help_match(rom, terms) {
+    const needed = terms.filter(t => !rom.search.includes(t) && !rom.product.search.includes(t)).map(help_term);
+    if (!needed.length) return;
+    // The line with the most of those terms, then more lines (up to three) until they're all shown
+    const lines = [];
+    let remaining = needed;
+    while (remaining.length && lines.length < 3) {
+        let best = null, bestCount = 0;
+        for (const line of rom.helpLines) {
+            const lower = line.toLowerCase();
+            const count = remaining.filter(t => lower.includes(t)).length;
+            if (count > bestCount) { best = line; bestCount = count; if (count === remaining.length) break; }
+        }
+        if (!best) break;
+        lines.push(best.trim().replace(/\s+/g, ' '));
+        remaining = remaining.filter(t => !best.toLowerCase().includes(t));
+    }
+    if (!lines.length) return;
+    highlight(rom.helpEl, lines.join('  ·  '), terms.map(help_term));
+    rom.helpBox.hidden = false;
+    helpShown.push(rom.helpBox);
+}
+
+// The search terms to mark in a ROM's pop-up (none when showing an identify result)
+function current_terms() {
+    return identifySet ? [] : parseSearchQuery($('search').value).include.map(help_term);
 }
 
 function apply_filters() {
@@ -762,6 +824,8 @@ function apply_filters() {
 
     for (const [el, text] of highlighted) el.textContent = text;
     highlighted = [];
+    for (const el of helpShown) el.hidden = true;
+    helpShown = [];
 
     let totalRoms = 0, totalProducts = 0;
     for (const platform of PLATFORMS) {
@@ -780,7 +844,8 @@ function apply_filters() {
                     for (const rom of product.roms) {
                         let ok = !query.exclude.some(t => rom.search.includes(t)) && (!goodOnly || rom.good) && !(hideBad && rom.bad);
                         if (ok && !productMatch) {
-                            ok = query.include.every(t => rom.search.includes(t));
+                            // Each word can be in the ROM's details, its product's, or its *HELP text
+                            ok = query.include.every(t => rom.search.includes(t) || product.search.includes(t) || rom.helpSearch.includes(help_term(t)));
                             if (ok) romLevelMatch = true;
                         }
                         visible.push(ok);
@@ -812,7 +877,9 @@ function apply_filters() {
             if (searching) {
                 highlight(product.nameEl, product.name, query.include);
                 if (product.tagline) highlight(product.taglineEl, product.tagline, query.include);
-                if (expanded) product.roms.forEach((rom, i) => { if (visible[i]) highlight(rom.nameEl, rom.data.name, query.include); });
+                if (expanded) product.roms.forEach((rom, i) => {
+                    if (visible[i]) { highlight(rom.nameEl, rom.data.name, query.include); show_help_match(rom, query.include); }
+                });
             }
         }
         platform.row.hidden = platformProducts === 0;
@@ -924,7 +991,7 @@ function size_explanation(rom) {
     return s;
 }
 
-function help_html(rom) {
+function help_html(rom, terms) {
     const help = rom.data.help || [];
     const get = key => { for (const [k, v] of help) if (k === key) return v; return ""; };
     let html = '';
@@ -932,11 +999,14 @@ function help_html(rom) {
     if (boot.includes("\nBASIC\n")) html += `<pre class="beeb">${escape_html(boot)}</pre>`;
     let text = '';
     const def = get("");
-    if (def && !def.includes("BBC Computer")) text += "&gt;*HELP\n" + escape_html(def);
+    if (def && !def.includes("BBC Computer")) text += ">*HELP\n" + def;
     for (const [k, v] of help) {
-        if (k !== "@BOOT@" && k !== "" && !v.includes("BBC Computer")) text += (text ? "\n" : "") + "\n" + escape_html(v);
+        if (k !== "@BOOT@" && k !== "" && !v.includes("BBC Computer")) text += (text ? "\n" : "") + "\n" + v;
     }
-    if (text) html += `<pre class="beeb">${text}${text.endsWith("\n") ? "" : "\n"}\n&gt;</pre>`;
+    if (text) {
+        text += (text.endsWith("\n") ? "" : "\n") + "\n>";
+        html += `<pre class="beeb">${(terms.length && marked_html(text, terms)) || escape_html(text)}</pre>`;
+    }
     return html;
 }
 
@@ -995,7 +1065,7 @@ function show_rom(rom) {
             `</div></div>` +
         `<div class="modal-body">${status}` +
             (r.notes ? `<p class="notes">${convertUrlsToLinks(escape_html_br(r.notes))}</p>` : '') +
-            `<dl class="details">${details}</dl>${help_html(rom)}</div>` +
+            `<dl class="details">${details}</dl>${help_html(rom, current_terms())}</div>` +
         `<div class="modal-actions">${actions}</div>`;
 
     const go = step => { const next = siblings[index + step]; if (next) show_rom(next); };
@@ -1003,6 +1073,12 @@ function show_rom(rom) {
         if (e.key === 'ArrowLeft') go(-1);
         else if (e.key === 'ArrowRight') go(1);
     });
+    // Scroll the *HELP block to the first search term found in it
+    const mark = $('modal').querySelector('pre.beeb mark');
+    if (mark) {
+        const pre = mark.closest('pre');
+        pre.scrollTop += mark.getBoundingClientRect().top - pre.getBoundingClientRect().top - 40;
+    }
     $('to-product').addEventListener('click', () => show_product(product));
     if ($('prev-rom')) $('prev-rom').addEventListener('click', () => go(-1));
     if ($('next-rom')) $('next-rom').addEventListener('click', () => go(1));

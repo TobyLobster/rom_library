@@ -152,9 +152,9 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
   width: 272px; flex: none;
   height: calc(100vh - var(--topbar-h));
   overflow-y: auto;
-  padding: 20px 16px 32px 24px;
   border-right: 1px solid var(--border);
 }
+.drawer-body { padding: 20px 16px 32px 24px; }
 .sidebar h2 {
   margin: 22px 0 10px; font-size: 11px; font-weight: 700; letter-spacing: .08em;
   text-transform: uppercase; color: var(--text-3);
@@ -373,6 +373,124 @@ h4 { margin: 16px 0 8px; font-size: 12px; font-weight: 700; letter-spacing: .06e
 .loading { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; background: var(--bg); color: var(--text-2); font-size: 16px; }
 .copied { color: var(--good); font-size: 13px; }
 [hidden] { display: none !important; }
+
+/* ------------------------------------------------------------------------------------------------
+   Smaller screens (tablets and phones). Nothing here affects the desktop layout.
+   ------------------------------------------------------------------------------------------------ */
+.drawer-bg, tr.rom .rom-meta { display: none; }
+@media (min-width: 901px) { .mobile-only { display: none !important; } }
+
+@media (max-width: 900px) {
+  :root { --topbar-h: 108px; }
+  .desktop-only { display: none !important; }
+
+  /* Top bar on two rows: logo, title and buttons, then the search box */
+  .topbar { flex-wrap: wrap; align-content: center; gap: 8px 10px; padding: 8px 12px; }
+  .brand { gap: 8px; min-width: 0; flex: 1 1 0; }
+  .brand img { height: 36px; }
+  .brand-name { min-width: 0; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .brand-name small { display: none; }
+  .topbar-end { gap: 8px; }
+  .topbar .btn { height: 40px; padding: 0 14px; }
+  .search { order: 3; flex: 1 1 100%; max-width: none; height: 40px; }
+  .search input { font-size: 16px; }         /* 16px stops iPhones zooming in on the search box */
+  .search kbd { display: none; }
+  .icon-button { width: 36px; height: 36px; }
+  .filter-count {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px;
+    background: var(--accent); color: var(--accent-text); font-size: 12px;
+  }
+
+  /* The sidebar becomes a drawer that slides in from the left */
+  .sidebar {
+    position: fixed; top: 0; left: 0; bottom: 0; z-index: 45;
+    width: min(340px, 88vw); height: auto;
+    display: flex; flex-direction: column;
+    padding: 0; border-right: 0;
+    background: var(--surface); box-shadow: var(--shadow);
+    transform: translateX(-105%); transition: transform .2s ease;
+    overflow: hidden;
+  }
+  body.filters-open .sidebar { transform: none; }
+  body.filters-open { overflow: hidden; }
+  .drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 10px 10px 20px; border-bottom: 1px solid var(--border); }
+  .drawer-head h2 { margin: 0 !important; font-size: 16px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--text); }
+  .drawer-body { flex: 1; overflow-y: auto; padding: 16px 20px 24px; }
+  .drawer-foot { padding: 12px 20px; border-top: 1px solid var(--border); background: var(--surface-2); }
+  .drawer-foot .btn { width: 100%; justify-content: center; height: 42px; }
+  .drawer-bg { position: fixed; inset: 0; z-index: 40; background: rgba(20,20,18,.45); }
+  body.filters-open .drawer-bg { display: block; }
+  .chip { padding: 7px 12px; font-size: 13.5px; }
+  select { height: 40px; font-size: 16px; }
+  .toggle { margin: 12px 0; font-size: 15px; }
+  .toggle input { width: 18px; height: 18px; }
+  .platform-list a { padding: 9px 8px; font-size: 14.5px; }
+
+  main { padding: 12px 12px 48px; }
+  .results-bar { flex-wrap: wrap; gap: 4px 16px; }
+  .link-button { font-size: 14px; padding: 4px 0; }
+}
+
+/* Phones: each ROM is a short card instead of a row of columns */
+@media (max-width: 640px) {
+  :root { --thead-h: 0px; }
+  .topbar .btn .label { display: none; }
+  .topbar .btn { padding: 0 11px; }
+  .table-wrap { border-radius: 6px; }
+  #rom-table, #rom-table tbody { display: block; }
+  #rom-table thead, #rom-table colgroup { display: none; }
+  #rom-table tr { display: block; }
+  #rom-table td { display: block; }
+  tr.platform td { padding: 12px 12px 8px; font-size: 17px; }
+  tr.product td { padding: 10px 10px 10px 6px; }
+  .product-line { flex-wrap: wrap; gap: 4px 8px; }
+  .product-name { white-space: normal; flex: 1 1 150px; min-width: 0; }
+  .pill { font-size: 11px; padding: 1px 7px; }
+  .product-tagline { order: 5; flex: 1 1 100%; white-space: normal; padding-left: 28px; font-size: 13px; }
+  .details-button { padding: 6px; }
+  .details-button .label { display: none; }
+  .details-button .icon { width: 18px; height: 18px; }
+
+  /* ROM rows: the name, then publisher · version · year · size underneath */
+  #rom-table tr.rom { display: flex; flex-wrap: wrap; align-items: baseline; padding: 8px 12px 9px 34px; position: relative; border-bottom: 1px solid var(--border); }
+  #rom-table tr.rom td { display: inline; padding: 0; border: 0; font-size: 12.5px; color: var(--text-2); }
+  #rom-table tr.rom td.name { display: block; flex: 1 1 100%; padding: 0 0 2px; position: static; font-size: 14px; color: var(--text); }
+  #rom-table tr.rom.bad td { color: var(--bad); }
+  #rom-table tr.rom .status { left: 12px; top: 8px; }
+  #rom-table tr.rom td:not(.name) { display: none; }      /* shown in .rom-meta instead (authors are in the pop-up) */
+  tr.rom .rom-meta { display: block; margin-top: 2px; font-size: 12.5px; color: var(--text-2); }
+  tr.rom.bad .rom-meta { color: inherit; }
+  #rom-table tr.rom:hover td { background: none; }
+  #rom-table tr.rom:hover { background: var(--hover-tint); }
+  tr.rom .help-match { white-space: normal; overflow-wrap: anywhere; }
+
+  /* Pop-ups fill the screen */
+  .modal-bg { padding: 0; }
+  .modal { width: 100%; min-height: 100%; border-radius: 0; box-shadow: none; }
+  .modal-head { padding: 12px 8px 10px 16px; }
+  .modal-title { font-size: 17px; }
+  .modal-body { padding: 14px 16px 18px; }
+  dl.details { grid-template-columns: minmax(80px, max-content) 1fr; gap: 6px 12px; font-size: 13px; }
+  .beeb { font-size: 11px; max-height: 50vh; }
+  .modal-actions { flex-wrap: wrap; padding: 12px 16px; }
+  .modal-actions .spacer { display: none; }
+  .rom-list li { display: grid; grid-template-columns: 14px 1fr; gap: 2px 10px; padding: 9px 10px; }
+  .rom-list .meta { grid-column: 2; margin-left: 0; white-space: normal; }
+
+  .identify-result { padding: 12px 40px 12px 14px; }
+  .about .about-body { padding: 4px 14px 10px; }
+}
+
+/* On touch screens, don't leave things looking 'hovered' after they're tapped */
+@media (hover: none) {
+  .chip:hover { border-color: var(--border-strong); color: inherit; }
+  .chip[aria-pressed="true"]:hover { border-color: var(--accent); color: var(--accent-text); }
+  tr.product:hover td { background: var(--surface); }
+  tr.rom:hover td, #rom-table tr.rom:hover { background: none; }
+  .btn:hover { border-color: var(--border-strong); color: var(--text); }
+  .btn.primary:hover { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+}
 </style>
 </head>
 <body>
@@ -394,16 +512,28 @@ h4 { margin: 16px 0 8px; font-size: 12px; font-weight: 700; letter-spacing: .06e
     <kbd title="Press / to search">/</kbd>
   </label>
   <div class="topbar-end">
+    <button id="filters-button" class="btn mobile-only" title="Categories, platform and other filters">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+      <span class="label">Filters</span><span id="filter-count" class="filter-count" hidden></span>
+    </button>
     <button id="identify-button" class="btn" title="Choose a ROM image file to identify it (or drop one anywhere on the page)">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4m0 0-4 4m4-4 4 4"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
-      Identify a ROM…
+      <span class="label">Identify<span class="desktop-only"> a ROM…</span></span>
     </button>
     <input id="identify-file" type="file" hidden>
   </div>
 </header>
 
 <div class="layout">
+  <div id="drawer-bg" class="drawer-bg"></div>
   <aside class="sidebar">
+    <div class="drawer-head mobile-only">
+      <h2>Filters</h2>
+      <button id="close-filters" class="icon-button" title="Close">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <div class="drawer-body">
     <h2>Categories</h2>
     <div id="category-chips" class="chips"></div>
     <button id="clear-categories" class="clear-filters" hidden>Clear categories</button>
@@ -417,6 +547,8 @@ h4 { margin: 16px 0 8px; font-size: 12px; font-weight: 700; letter-spacing: .06e
 
     <h2>Jump to platform</h2>
     <ul id="platform-list" class="platform-list"></ul>
+    </div>
+    <div class="drawer-foot mobile-only"><button id="show-results" class="btn primary">Show results</button></div>
   </aside>
 
   <main>
@@ -671,7 +803,7 @@ function build_table() {
                 `<span class="product-name"></span>` +
                 `<span class="product-tagline"></span>` +
                 `<span class="pill"></span>` +
-                `<button class="details-button" title="Product details">${ICON.info} Details</button></div>`;
+                `<button class="details-button" title="Product details">${ICON.info} <span class="label">Details</span></button></div>`;
             product.row = prow;
             product.nameEl = pcell.querySelector('.product-name');
             product.taglineEl = pcell.querySelector('.product-tagline');
@@ -693,6 +825,11 @@ function build_table() {
                                  '<div class="help-match" title="Found in this ROM\'s *HELP text" hidden><span class="k">*HELP</span><span class="mono"></span></div>';
                 rom.nameEl = name.querySelector('.rom-name');
                 rom.helpBox = name.querySelector('.help-match');
+                // Publisher · version · year · size, under the name on phones (instead of the columns)
+                const meta = document.createElement('div');
+                meta.className = 'rom-meta';
+                meta.textContent = [r.publishers, r.version, r.year, size_text(r.size)].filter(Boolean).join(' · ');
+                rom.nameEl.after(meta);
                 rom.helpEl = rom.helpBox.querySelector('.mono');
                 rom.nameEl.textContent = r.name;
                 row.insertCell().textContent = r.publishers;
@@ -712,6 +849,11 @@ function build_table() {
     }
     $('rom-table').replaceChild(tbody, $('rom-table-body'));
 }
+
+// On small screens the filters are in a drawer (see the CSS for max-width: 900px)
+function open_filters() { document.body.classList.add('filters-open'); }
+function close_filters() { document.body.classList.remove('filters-open'); }
+function filters_are_open() { return document.body.classList.contains('filters-open'); }
 
 function build_sidebar() {
     // Category chips, with the number of products in each
@@ -741,6 +883,7 @@ function build_sidebar() {
         li.innerHTML = `<a href="#${escape_html(platform.id)}"><span>${escape_html(platform.name)}</span><span class="count"></span></a>`;
         li.querySelector('a').addEventListener('click', e => {
             e.preventDefault();
+            close_filters();
             if (!platform.row.hidden) platform.row.scrollIntoView({ block: 'start' });
         });
         platform.listItem = li;
@@ -891,6 +1034,11 @@ function apply_filters() {
         ? `Showing the ROM images that match the identified file`
         : `<b>${fmt(totalRoms)}</b> ROM image${totalRoms === 1 ? '' : 's'} in <b>${fmt(totalProducts)}</b> product${totalProducts === 1 ? '' : 's'}`;
     $('no-results').hidden = totalProducts > 0;
+    const active = cats.size + (platformFilter ? 1 : 0) + (goodOnly ? 1 : 0) + (hideBad ? 0 : 1);
+    $('filter-count').textContent = active;
+    $('filter-count').hidden = active === 0;
+    $('show-results').textContent = identifySet ? 'Show results'
+        : totalRoms === 0 ? 'No ROM images match' : `Show ${plural(totalRoms, 'ROM image')}`;
     $('clear-search').hidden = $('search').value === '';
     $('clear-categories').hidden = cats.size === 0;
 }
@@ -1249,6 +1397,10 @@ function setup_events() {
         $('rom-table').classList.toggle('show-checksums', $('show-checksums').checked);
         try { localStorage.setItem('show-checksums', $('show-checksums').checked ? '1' : '0'); } catch (e) {}
     });
+    $('filters-button').addEventListener('click', open_filters);
+    $('close-filters').addEventListener('click', close_filters);
+    $('show-results').addEventListener('click', () => { close_filters(); window.scrollTo(0, 0); });
+    $('drawer-bg').addEventListener('click', close_filters);
     $('expand-all').addEventListener('click', () => set_all_expanded(true));
     $('collapse-all').addEventListener('click', () => set_all_expanded(false));
 
@@ -1278,6 +1430,7 @@ function setup_events() {
             else if (modal_keys) modal_keys(e);
             return;
         }
+        if (e.key === 'Escape' && filters_are_open()) { close_filters(); return; }
         const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
         if (e.key === '/' && !typing) { e.preventDefault(); $('search').focus(); $('search').select(); }
         else if (e.key === 'Escape' && document.activeElement === $('search') && $('search').value) { $('search').value = ''; filters_changed(); }
@@ -1314,6 +1467,7 @@ function start() {
         $('show-checksums-option').hidden = false;
         try { if (localStorage.getItem('show-checksums') === '1') { $('show-checksums').checked = true; $('rom-table').classList.add('show-checksums'); } } catch (e) {}
     }
+    if (window.matchMedia('(max-width: 640px)').matches) $('search').placeholder = 'Search names, *HELP text, checksums…';
     setup_events();
     apply_query_string();
     $('loading').hidden = true;
